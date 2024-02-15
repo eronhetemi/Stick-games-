@@ -240,3 +240,186 @@ function animate(timestamp) {
         }
       }
       break;
+    }
+    case "transitioning": {
+      sceneOffset += (timestamp - lastTimestamp) / transitioningSpeed;
+
+      const [nextPlatform] = thePlatformTheStickHits();
+      if (sceneOffset > nextPlatform.x + nextPlatform.w - paddingX) {
+        // Add the next step
+        sticks.push({
+          x: nextPlatform.x + nextPlatform.w,
+          length: 0,
+          rotation: 0
+        });
+        phase = "waiting";
+      }
+      break;
+    }
+    case "falling": {
+      if (sticks.last().rotation < 180)
+        sticks.last().rotation += (timestamp - lastTimestamp) / turningSpeed;
+
+      heroY += (timestamp - lastTimestamp) / fallingSpeed;
+      const maxHeroY =
+        platformHeight + 100 + (window.innerHeight - canvasHeight) / 2;
+      if (heroY > maxHeroY) {
+        restartButton.style.display = "block";
+        return;
+      }
+      break;
+    }
+    default:
+      throw Error("Wrong phase");
+  }
+
+  draw();
+  window.requestAnimationFrame(animate);
+
+  lastTimestamp = timestamp;
+}
+
+// Returns the platform the stick hit (if it didn't hit any stick then return undefined)
+function thePlatformTheStickHits() {
+  if (sticks.last().rotation != 90)
+    throw Error(`Stick is ${sticks.last().rotation}°`);
+  const stickFarX = sticks.last().x + sticks.last().length;
+
+  const platformTheStickHits = platforms.find(
+    (platform) => platform.x < stickFarX && stickFarX < platform.x + platform.w
+  );
+
+  // If the stick hits the perfect area
+  if (
+    platformTheStickHits &&
+    platformTheStickHits.x + platformTheStickHits.w / 2 - perfectAreaSize / 2 <
+      stickFarX &&
+    stickFarX <
+      platformTheStickHits.x + platformTheStickHits.w / 2 + perfectAreaSize / 2
+  )
+    return [platformTheStickHits, true];
+
+  return [platformTheStickHits, false];
+}
+
+function draw() {
+  ctx.save();
+  ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+
+  drawBackground();
+
+  // Center main canvas area to the middle of the screen
+  ctx.translate(
+    (window.innerWidth - canvasWidth) / 2 - sceneOffset,
+    (window.innerHeight - canvasHeight) / 2
+  );
+
+  // Draw scene
+  drawPlatforms();
+  drawHero();
+  drawSticks();
+
+  // Restore transformation
+  ctx.restore();
+}
+
+restartButton.addEventListener("click", function (event) {
+  event.preventDefault();
+  resetGame();
+  restartButton.style.display = "none";
+});
+
+function drawPlatforms() {
+  platforms.forEach(({ x, w }) => {
+    // Draw platform
+    ctx.fillStyle = "black";
+    ctx.fillRect(
+      x,
+      canvasHeight - platformHeight,
+      w,
+      platformHeight + (window.innerHeight - canvasHeight) / 2
+    );
+
+    // Draw perfect area only if hero did not yet reach the platform
+    if (sticks.last().x < x) {
+      ctx.fillStyle = "red";
+      ctx.fillRect(
+        x + w / 2 - perfectAreaSize / 2,
+        canvasHeight - platformHeight,
+        perfectAreaSize,
+        perfectAreaSize
+      );
+    }
+  });
+}
+
+function drawHero() {
+  ctx.save();
+  ctx.fillStyle = "black";
+  ctx.translate(
+    heroX - heroWidth / 2,
+    heroY + canvasHeight - platformHeight - heroHeight / 2
+  );
+
+  // Body
+  drawRoundedRect(
+    -heroWidth / 2,
+    -heroHeight / 2,
+    heroWidth,
+    heroHeight - 4,
+    5
+  );
+
+  // Legs
+  const legDistance = 5;
+  ctx.beginPath();
+  ctx.arc(legDistance, 11.5, 3, 0, Math.PI * 2, false);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(-legDistance, 11.5, 3, 0, Math.PI * 2, false);
+  ctx.fill();
+
+  // Eye
+  ctx.beginPath();
+  ctx.fillStyle = "white";
+  ctx.arc(5, -7, 3, 0, Math.PI * 2, false);
+  ctx.fill();
+
+   // Band
+   ctx.fillStyle = "red";
+   ctx.fillRect(-heroWidth / 2 - 1, -12, heroWidth + 2, 4.5);
+   ctx.beginPath();
+   ctx.moveTo(-9, -14.5);
+   ctx.lineTo(-17, -18.5);
+   ctx.lineTo(-14, -8.5);
+   ctx.fill();
+   ctx.beginPath();
+   ctx.moveTo(-10, -10.5);
+   ctx.lineTo(-15, -3.5);
+   ctx.lineTo(-5, -7);
+   ctx.fill();
+ 
+   ctx.restore();
+ }
+ 
+ function drawRoundedRect(x, y, width, height, radius) {
+   ctx.beginPath();
+   ctx.moveTo(x, y + radius);
+   ctx.lineTo(x, y + height - radius);
+   ctx.arcTo(x, y + height, x + radius, y + height, radius);
+   ctx.lineTo(x + width - radius, y + height);
+   ctx.arcTo(x + width, y + height, x + width, y + height - radius, radius);
+   ctx.lineTo(x + width, y + radius);
+   ctx.arcTo(x + width, y, x + width - radius, y, radius);
+   ctx.lineTo(x + radius, y);
+   ctx.arcTo(x, y, x, y + radius, radius);
+   ctx.fill();
+ }
+ 
+ function drawSticks() {
+   sticks.forEach((stick) => {
+     ctx.save();
+ 
+     // Move the anchor point to the start of the stick and rotate
+     ctx.translate(stick.x, canvasHeight - platformHeight);
+     ctx.rotate((Math.PI / 180) * stick.rotation);
