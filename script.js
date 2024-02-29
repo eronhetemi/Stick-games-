@@ -29,7 +29,7 @@ const canvasWidth = 375;
 const canvasHeight = 375;
 const platformHeight = 100;
 const heroDistanceFromEdge = 10; // While waiting
-const paddingX = 100; // The waiting position of the hero in from the original canvas size
+const paddingX = 100; 
 const perfectAreaSize = 10;
 
 // The background moves slower than the hero
@@ -199,7 +199,7 @@ function animate(timestamp) {
 
       if (sticks.last().rotation > 90) {
         sticks.last().rotation = 90;
-
+                                    
         const [nextPlatform, perfectHit] = thePlatformTheStickHits();
         if (nextPlatform) {
           // Increase score
